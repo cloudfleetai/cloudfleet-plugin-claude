@@ -1,0 +1,6 @@
+{
+    "cloudfleet": {
+        "command": "cloudfleet",
+        "args": ["mcp"]
+    }
+}

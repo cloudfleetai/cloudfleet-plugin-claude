@@ -1,0 +1,82 @@
+# Cloudfleet Plugin for Claude Code
+
+[Claude Code](https://claude.ai/code) plugin by [Cloudfleet](https://cloudfleet.ai) — operate Cloudfleet Kubernetes Engine (CFKE) and Cloudfleet Container Registry (CFCR) with guided workflows, debugging aids, and preconfigured MCP access.
+
+## Features
+
+- **Preconfigured MCP server** — query clusters, list resources, and get cluster info without local setup
+- **kubectl safety** — PreToolUse hook validates kubectl targets a CFKE cluster, isolated kubeconfig management
+- **Background knowledge** — CFKE architecture, CFCR usage, best practices (resource requests, load balancers, node placement) auto-triggered when relevant
+- **Guided workflows** — cluster setup, fleet configuration, self-managed nodes, debugging
+
+## Configuration
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `enable_kubectl` | boolean | Enable kubectl for direct cluster access. When disabled, read-only MCP access is used. |
+
+## Installation
+
+### From GitHub
+
+```
+/plugin marketplace add cloudfleetai/cloudfleet-plugin-claude
+/plugin install cloudfleet@cloudfleet
+/reload-plugins
+```
+
+### Local development
+
+```bash
+claude --plugin-dir /path/to/cloudfleet-plugin-claude
+```
+
+Use `/reload-plugins` to pick up changes without restarting.
+
+Validate and lint before submitting changes:
+
+```bash
+claude plugin validate .
+npx markdownlint-cli 'skills/**/*.md' 'agents/**/*.md' --config .markdownlint.json
+```
+
+## Getting Started
+
+Once installed, try these prompts:
+
+- `I'm getting started with Cloudfleet` — walks you through CLI setup and authentication
+- `What clusters do I have?` — lists your clusters with status and details
+- `Create a new cluster on Hetzner` — guided cluster and fleet setup
+- `Check if my cluster follows best practices` — audits deployments for resource requests, LB policy, node placement
+- `Debug my cluster, pods are stuck in Pending` — systematic debugging workflow
+- `Push my app image to CFCR` — container registry guidance
+- `Add a self-managed node to my cluster` — join any Linux server
+
+## Requirements
+
+- [Cloudfleet CLI](https://cloudfleet.ai/docs/introduction/getting-started/) v0.6.30+
+- A Cloudfleet account with at least one configured authentication profile
+- (Optional) `kubectl` for full cluster access
+
+## Documentation
+
+- [Cloudfleet Docs](https://cloudfleet.ai/docs)
+- [MCP Server](https://cloudfleet.ai/docs/introduction/mcp-server/)
+- [Getting Started](https://cloudfleet.ai/docs/introduction/getting-started/)
+
+## Skills
+
+| Skill            | Invocable | Description                                     |
+| ---------------- | --------- | ----------------------------------------------- |
+| `setup`          | Yes       | Install CLI, authenticate, configure access     |
+| `cluster-info`   | Yes       | List and inspect Cloudfleet clusters            |
+| `query-cluster`  | Yes       | Query Kubernetes resources (kubectl or MCP)     |
+| `debug-cluster`  | Yes       | Guided cluster debugging workflow               |
+| `cluster-setup`  | Auto      | Create clusters, fleets, add self-managed nodes |
+| `best-practices` | Auto      | Resource requests, LB policy, node placement    |
+| `cfke-overview`  | Auto      | CFKE architecture and concepts                  |
+| `cfcr-overview`  | Auto      | Container registry usage                        |
+
+## Disclaimer
+
+This plugin is provided as-is. AI-generated output may be inaccurate or incomplete — always review commands before executing them, especially those that create or modify infrastructure. LLMs may have outdated knowledge about Cloudfleet pricing, policies, and features — refer to https://cloudfleet.ai/docs for current information. Cloudfleet is not responsible for unintended changes made through AI-assisted workflows.

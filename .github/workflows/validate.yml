@@ -1,0 +1,34 @@
+name: Validate Plugin
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  validate:
+    name: Validate plugin structure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Claude CLI
+        run: curl -fsSL https://claude.ai/install.sh | bash
+
+      - name: Validate plugin
+        run: claude plugin validate .
+
+  lint-markdown:
+    name: Lint markdown
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install markdownlint-cli
+        run: npm install -g markdownlint-cli
+
+      - name: Lint skill and agent files
+        run: markdownlint 'skills/**/*.md' 'agents/**/*.md' --config .markdownlint.json

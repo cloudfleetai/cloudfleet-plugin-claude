@@ -1,0 +1,4 @@
+.claude/
+/tmp/
+*.kubeconfig
+.DS_Store

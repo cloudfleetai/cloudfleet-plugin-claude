@@ -1,0 +1,55 @@
+#!/bin/bash
+# PreToolUse hook: validates that kubectl commands target a CFKE cluster.
+# Reads tool input JSON from stdin. Exits 2 to block, 0 to allow.
+
+set -euo pipefail
+
+INPUT=$(cat)
+
+# Extract the command from tool input
+COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
+
+# Only check commands that invoke kubectl
+if ! echo "$COMMAND" | grep -qE '\bkubectl\b'; then
+    exit 0
+fi
+
+# If the command already uses --kubeconfig pointing to a cloudfleet temp file, allow it
+if echo "$COMMAND" | grep -qE '\-\-kubeconfig\s+/tmp/cloudfleet-'; then
+    exit 0
+fi
+
+# If the command uses --kubeconfig with any path, allow it (user is explicit)
+if echo "$COMMAND" | grep -qE '\-\-kubeconfig\b'; then
+    exit 0
+fi
+
+# If the command explicitly specifies --context, the user knows what they're targeting — allow it
+if echo "$COMMAND" | grep -qE '\-\-context\b'; then
+    exit 0
+fi
+
+# If KUBECONFIG env var is set and points to a cloudfleet temp file, allow it
+if echo "$COMMAND" | grep -qE 'KUBECONFIG=/tmp/cloudfleet-'; then
+    exit 0
+fi
+
+# Bare kubectl without --kubeconfig — check the current context
+CURRENT_SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || true)
+
+if [ -z "$CURRENT_SERVER" ]; then
+    echo "No active kubectl context found. Use 'cloudfleet clusters kubeconfig <cluster-id> --kubeconfig /tmp/cloudfleet-<id>.kubeconfig' to configure access." >&2
+    exit 2
+fi
+
+if echo "$CURRENT_SERVER" | grep -qE '\.cfke\.cloudfleet\.dev'; then
+    # Current context points to a CFKE cluster — allow but warn
+  cat <<EOF
+{"additionalContext": "WARNING: Using bare kubectl with the user's active context. For safety, prefer using --kubeconfig /tmp/cloudfleet-<cluster-id>.kubeconfig to target a specific cluster."}
+EOF
+    exit 0
+fi
+
+# Current context is NOT a CFKE cluster — block
+echo "Current kubectl context points to '$CURRENT_SERVER' which is not a CFKE cluster. Use 'cloudfleet clusters kubeconfig <cluster-id> --kubeconfig /tmp/cloudfleet-<id>.kubeconfig' and pass --kubeconfig to kubectl." >&2
+exit 2

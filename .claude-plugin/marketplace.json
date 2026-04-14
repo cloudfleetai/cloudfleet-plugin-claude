@@ -1,0 +1,15 @@
+{
+    "name": "cloudfleet",
+    "owner": {
+        "name": "Cloudfleet",
+        "email": "support@cloudfleet.ai"
+    },
+    "plugins": [
+        {
+            "name": "cloudfleet",
+            "version": "0.2.4",
+            "source": "./",
+            "description": "Operate Cloudfleet Kubernetes Engine (CFKE) and Cloudfleet Container Registry (CFCR) with guided workflows, debugging, and MCP access."
+        }
+    ]
+}
