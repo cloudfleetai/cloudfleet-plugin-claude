@@ -54,7 +54,7 @@ Once installed, try these prompts:
 
 ## Requirements
 
-- [Cloudfleet CLI](https://cloudfleet.ai/docs/introduction/getting-started/) v0.6.30+
+- [Cloudfleet CLI](https://cloudfleet.ai/docs/introduction/getting-started/) v1.2+ (write commands changed their input model in 1.0)
 - A Cloudfleet account with at least one configured authentication profile
 - (Optional) `kubectl` for full cluster access
 

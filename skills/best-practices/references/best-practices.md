@@ -52,13 +52,19 @@ Benefits of Local policy:
 
 ## CFKE Node Labels
 
-| Label                              | Description       | Example values                                                  |
-| ---------------------------------- | ----------------- | --------------------------------------------------------------- |
-| `cfke.io/provider`                 | Cloud provider    | aws, gcp, hetzner, vultr, ovh, scaleway, exoscale, self-managed |
-| `cfke.io/accelerator-name`         | GPU type          | nvidia-a100, nvidia-v100                                        |
-| `topology.kubernetes.io/zone`      | Availability zone | eu-central-1a, fsn1                                             |
-| `topology.kubernetes.io/region`    | Region            | eu-central, us-east                                             |
-| `node.kubernetes.io/instance-type` | Instance type     | cx32, m5.large                                                  |
+| Label                                  | Description                        | Example values                                                                            |
+| -------------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------- |
+| `cfke.io/provider`                     | Cloud provider                     | `aws`, `gcp`, `hetzner` on auto-provisioned nodes; any value you set on self-managed ones |
+| `topology.kubernetes.io/region`        | Provider's own region              | `us-east-2` (AWS), `europe-west4` (GCP), `fsn1` (Hetzner)                                 |
+| `topology.kubernetes.io/zone`          | Provider's availability zone       | `us-east-2a`                                                                              |
+| `cfke.io/region` / `cfke.io/subregion` | Cloudfleet's own geography         | `europe` / `central`                                                                      |
+| `node.kubernetes.io/instance-type`     | Instance type                      | `cpx11`, `m5.large`                                                                       |
+| `cfke.io/instance-family`              | Instance family, size left to CFKE | `cpx`, `ccx`, `m5`                                                                        |
+| `kubernetes.io/arch`                   | Architecture                       | `amd64`, `arm64`                                                                          |
+| `karpenter.sh/capacity-type`           | Purchase type                      | `on-demand`, `spot`                                                                       |
+| `cfke.io/accelerator-name`             | GPU model, no vendor prefix        | `L4`, `T4`, `A100`, `H100`, `L40S`, `V100`                                                |
+| `cfke.io/accelerator-count`            | GPUs per instance                  | `1`, `8`                                                                                  |
+| `cfke.io/accelerator-memory`           | GPU memory in GiB                  | `24`, `80`                                                                                |
 
 ## Node Selector Example
 
@@ -66,7 +72,7 @@ Benefits of Local policy:
 spec:
     nodeSelector:
         cfke.io/provider: hetzner
-        topology.kubernetes.io/region: eu-central
+        topology.kubernetes.io/region: fsn1
 ```
 
 ## Node Affinity (Multiple Providers)

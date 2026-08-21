@@ -15,6 +15,8 @@ kubectl enabled: **${user_config.enable_kubectl}**
 
 - `kubectl` is a separate tool from the Cloudfleet CLI — there is no `cloudfleet kubectl` command.
 - If the user specifies a `--profile`, pass it to all `cloudfleet` CLI commands.
+- Pass `-o json` to `cloudfleet` commands. The default `auto` already emits JSON when piped, but a per-profile default or `CLOUDFLEET_OUTPUT_FORMAT` can override it to `table`.
+- Narrow large results with `-q` (JMESPath), e.g. `cloudfleet clusters list -q "[].{id:id,name:name,status:status}"`.
 - The kubeconfig context name format is `{cluster-id}/{profile-name}`. Do NOT guess — run `kubectl config get-contexts` if unsure.
 
 ## Prerequisites
@@ -89,7 +91,25 @@ Based on findings, drill into specific areas:
 - **Networking**: Check Cilium pods, CoreDNS, Services/Endpoints
 - **Scheduling**: Check resource requests vs available capacity, taints/tolerations
 
-### 6. Summary
+### 6. Consult the troubleshooting docs
+
+Once the symptom is identified, open the matching page under `https://cloudfleet.ai/docs/troubleshooting/<slug>/` and follow it. **Fetch the page and read it. Never answer from the slug alone** — these pages change often, and a plausible-sounding answer reconstructed from the URL will be wrong.
+
+| Symptom                                                               | Slug                            |
+| --------------------------------------------------------------------- | ------------------------------- |
+| Pods stay `Pending`, no nodes appear                                  | `pods-stuck-in-pending`         |
+| `kubectl` cannot connect, cluster reported unavailable                | `cannot-reach-cluster`          |
+| API throttling, leader election flapping, GitOps reconcile storms     | `control-plane-pressure`        |
+| `exec format error`, arm64/amd64 image mismatch                       | `handle-single-platform-images` |
+| Request too large, data store size limits                             | `kubernetes-api-server-quotas`  |
+| LB IP changed, PROXY protocol errors, in-cluster LB access            | `load-balancer-issues`          |
+| Pod-to-pod failures, NetworkPolicy blocking the API server, Tailscale | `network-connectivity-issues`   |
+| PVs stuck attaching or mounting, disk pressure evictions              | `persistent-volume-issues`      |
+| Self-managed node will not join, frozen, or has host DNS problems     | `self-managed-node-issues`      |
+
+If a fetch returns 404 the page was renamed. Fetch the index at https://cloudfleet.ai/docs/troubleshooting/ and pick from there rather than guessing a new slug.
+
+### 7. Summary
 
 Present findings with:
 

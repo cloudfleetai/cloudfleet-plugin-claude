@@ -15,6 +15,8 @@ kubectl enabled: **${user_config.enable_kubectl}**
 
 - `kubectl` is a separate tool from the Cloudfleet CLI — there is no `cloudfleet kubectl` command.
 - If the user specifies a `--profile`, pass it to all `cloudfleet` CLI commands.
+- Pass `-o json` to `cloudfleet` commands. The default `auto` already emits JSON when piped, but a per-profile default or `CLOUDFLEET_OUTPUT_FORMAT` can override it to `table`.
+- Narrow large results with `-q` (JMESPath), e.g. `cloudfleet clusters list -q "[].{id:id,name:name,status:status}"`.
 - The kubeconfig context name format is `{cluster-id}/{profile-name}` (e.g., `0bd317f4-.../textcortex`). Do NOT guess — run `kubectl config get-contexts` if unsure.
 
 ## Execution Steps

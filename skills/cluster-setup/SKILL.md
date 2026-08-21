@@ -26,20 +26,26 @@ cloudfleet organization describe
 
 This returns the available `regions`, `versions`, and `cluster_tiers` under the `quota` field. Use these values — do NOT hardcode regions or versions.
 
-Note: The `pro` tier is only available after the user has entered a billing address and payment method in the Cloudfleet Console. If `pro` is not listed in `quota.cluster_tiers`, let the user know.
+A payment method is required at signup, so every tier is billable from the start. If a tier the user asked for is not listed in `quota.cluster_tiers`, tell them rather than silently picking another one.
 
 Then create the cluster:
 
 ```bash
-cloudfleet clusters create <<EOF
-{
-  "name": "<name>",
-  "tier": "<tier from quota.cluster_tiers>",
-  "region": "<region from quota.regions>",
-  "version_channel": "<version id from quota.versions>"
-}
+cloudfleet clusters create --name <name> --tier <tier> --region <region>
+```
+
+Named flags cover top-level scalar fields. For nested fields (`features`, `networking`) pass a document instead, with `-f -` for stdin or `-f <file>`:
+
+```bash
+cloudfleet clusters create -f - <<EOF
+name: <name>
+tier: <tier from quota.cluster_tiers>
+region: <region from quota.regions>
+version_channel: <version id from quota.versions>
 EOF
 ```
+
+Optional at create time, all Pro/Enterprise only: `release_channel` (`rapid`/`stable`/`extended`, how fast the control plane adopts new versions), `features` (GPU sharing via time-slicing or MPS), and `networking` (custom pod/service CIDRs, IPv4/IPv6 dual-stack). `networking` is immutable once the cluster exists. See [references/cluster-setup.md](references/cluster-setup.md).
 
 Control plane provisions in 2-3 minutes. The cluster starts with zero worker nodes — they provision on-demand when workloads are scheduled.
 
@@ -49,19 +55,25 @@ Control plane provisions in 2-3 minutes. The cluster starts with zero worker nod
 
 A fleet connects a cloud provider account so CFKE can auto-provision nodes. At least one provider must be configured for auto-provisioning to work.
 
+Wait for the cluster to reach status `deployed` first. Creating a fleet while the cluster is still provisioning returns 409.
+
 **Fleets are not region-scoped** — a single Hetzner fleet can provision nodes in any Hetzner region (nbg1, fsn1, hel1, ash, sin, etc.). The same applies to AWS and GCP. Use node labels (`topology.kubernetes.io/region`) and placement constraints to control where workloads land.
 
 ```bash
-cloudfleet clusters fleets create <cluster-id> <<EOF
+cloudfleet clusters fleets create <cluster-id> -f - <<EOF
 {
   "id": "my-fleet",
-  "hetzner": { "apiKey": "<hetzner-api-token>" },
+  "hetzner": { "enabled": true, "apiKey": "<hetzner-api-token>" },
   "limits": { "cpu": 24 }
 }
 EOF
 ```
 
-Supported providers: Hetzner (API token), AWS (IAM role ARN), GCP (project ID). A single fleet can span multiple providers. See [references/cluster-setup.md](references/cluster-setup.md) for all provider examples.
+Every provider block needs `"enabled": true` alongside its credentials.
+
+Auto-provisioning providers: Hetzner (API token), AWS (IAM role ARN), GCP (project ID). These are the only three in the public fleet schema; Upcloud, Exoscale, Scaleway, and OVH are in private preview and need Cloudfleet support to enable. For anything else, join nodes as self-managed. A single fleet can span multiple providers. See [references/cluster-setup.md](references/cluster-setup.md) for all provider examples.
+
+**Updates replace the whole resource.** `clusters update` and `fleets update` are full PUTs: any field left out resets to its default, and a flags-only update is rejected client-side. Read the current state, edit it, pipe it back. See [references/cluster-setup.md](references/cluster-setup.md).
 
 ## 3. Add Self-Managed Nodes (Optional)
 

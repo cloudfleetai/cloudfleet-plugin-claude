@@ -11,6 +11,7 @@ When users ask about CFKE architecture or concepts, use this summary. For detail
 **Terminology**:
 
 - Always refer to auto-provisioned nodes as "auto-provisioned nodes" or "auto-provisioning fleets", not "Karpenter-managed". The underlying technology is an implementation detail.
+- Objects like `NodePool` and `NodeClass` may be visible through `kubectl`, but they are managed by CFKE and must never be edited manually. All changes go through the Cloudfleet Fleets API (`cloudfleet clusters fleets ...` or the console); manual edits are overwritten and can break auto-provisioning.
 - **Never quote specific prices, vCPU limits, or fee structures** — pricing varies per customer due to discounts, private agreements, and taxes. Always direct users to https://cloudfleet.ai/pricing or their account page.
 - **Control plane region ≠ infrastructure region**. The cluster's control plane region (e.g., `europe-central-1a`) is where management runs. Fleets are NOT tied to this region — a single fleet covers all available regions of its cloud provider(s) by default.
 
@@ -20,16 +21,19 @@ CFKE (Cloudfleet Kubernetes Engine) is a fully managed Kubernetes platform. A si
 
 ### Supported Infrastructure
 
-- **Public cloud**: Hetzner, Vultr, OVH, Scaleway, Exoscale
-- **Self-managed**: Any Linux server can join with a single command
+- **Auto-provisioning**: AWS, GCP, and Hetzner Cloud. Upcloud, Exoscale, Scaleway, and OVH are in private preview and are enabled by Cloudfleet support, not self-service.
+- **Self-managed**: Any Linux server can join with a single command. This is how Vultr, Proxmox, VMware, bare metal, and any other provider without native auto-provisioning are used.
 - **Hybrid**: Mix cloud and on-premise nodes in the same cluster
 
 ### Service Tiers
 
-- **Basic (Free)**: Always-free tier for getting started
-- **Pro (Paid)**: Enhanced features, SLAs, and support for production workloads
+Three tiers, all paid. There is no free tier.
 
-See https://cloudfleet.ai/pricing for current pricing.
+- **Basic**: single-AZ, shared control plane, best-effort SLA. Hobby projects, prototypes, development.
+- **Pro**: multi-AZ, dedicated control plane, 99.95% SLA, 8-hour support response, release channels. Production workloads.
+- **Enterprise**: everything in Pro plus a 99.99% custom SLA, 1-hour support response with a named TAM, extended support for older Kubernetes versions, control plane private networking and authorized networks, and compliance reports.
+
+Cluster size is unlimited on every tier. Fetch current pricing from https://cloudfleet.ai/pricing rather than quoting figures.
 
 ## Key Concepts
 
@@ -38,4 +42,3 @@ See https://cloudfleet.ai/pricing for current pricing.
 - **Just-in-Time Infrastructure** — auto-provisioning fleets, cost-optimized node selection
 - **Self-managed Nodes** — any Linux server joins via single command (`cfke.io/provider: self-managed`)
 - **Konnectivity** — tunnels `kubectl exec/logs` and webhooks from control plane to data plane
-- **Cost optimization** — inactive clusters auto-suspend after 7 days idle, wake on first API request

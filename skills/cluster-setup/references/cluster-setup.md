@@ -14,25 +14,36 @@ The `quota` field contains `regions`, `versions` (with `id` and `label`), and `c
 
 ### CLI Command
 
+Write commands take named flags for top-level scalar fields, a YAML or JSON document via `-f <file>` (or `-f -` for stdin), or both, with flags layered on the document as overrides. Requires CLI 1.2+.
+
+Read commands accept `-o auto|json|yaml|table` and a `-q` JMESPath projection. Pass `-o json` so output does not depend on a pinned profile default.
+
 ```bash
-cloudfleet clusters create <<EOF
-{
-  "name": "production-cluster",
-  "tier": "<tier from quota.cluster_tiers>",
-  "region": "<region from quota.regions>",
-  "version_channel": "<version id from quota.versions>"
-}
+cloudfleet clusters create --name production-cluster --tier basic --region europe-central-1a
+```
+
+```bash
+cloudfleet clusters create -f - <<EOF
+name: production-cluster
+tier: <tier from quota.cluster_tiers>
+region: <region from quota.regions>
+version_channel: <version id from quota.versions>
 EOF
 ```
 
+Create returns the new cluster ID as a bare JSON string.
+
 ### Parameters
 
-| Field             | Required | Description                                                                                      |
-| ----------------- | -------- | ------------------------------------------------------------------------------------------------ |
-| `name`            | Yes      | Cluster name (1-63 chars)                                                                        |
-| `tier`            | Yes      | From `quota.cluster_tiers`                                                                       |
-| `region`          | No       | Control plane region from `quota.regions`. Does NOT restrict where worker nodes are provisioned. |
-| `version_channel` | No       | From `quota.versions` (use the `id` field)                                                       |
+| Field             | Required | Description                                                                                               |
+| ----------------- | -------- | --------------------------------------------------------------------------------------------------------- |
+| `name`            | Yes      | Cluster name (1-63 chars)                                                                                 |
+| `tier`            | Yes      | From `quota.cluster_tiers`                                                                                |
+| `region`          | No       | Control plane region from `quota.regions`. Does NOT restrict where worker nodes are provisioned.          |
+| `version_channel` | No       | Kubernetes version, from `quota.versions` (use the `id` field). Pro/Enterprise only.                      |
+| `release_channel` | No       | `rapid` (default), `stable` (Pro+), or `extended` (Enterprise). Controls upgrade pace.                    |
+| `features`        | No       | `gpu_sharing_strategy` (`none`/`mps`/`time_slicing`) + `gpu_max_shared_clients_per_gpu` (2-48). Pro+.     |
+| `networking`      | No       | `pod_cidr`, `service_cidr`, `dual_stack`, `pod_cidr_v6`, `service_cidr_v6`. Pro+, immutable after create. |
 
 ### Other Cluster Commands
 
@@ -43,6 +54,18 @@ cloudfleet clusters update <cluster-id>     # Update cluster
 cloudfleet clusters delete <cluster-id>     # Delete cluster
 ```
 
+## Full-Replace Updates
+
+`clusters update` and `fleets update` replace the entire resource: any field absent from the request is reset to its default. A flags-only update is rejected client-side before any network call. Read the current state, project the editable fields with `-q`, edit, and pipe it back:
+
+```bash
+cloudfleet clusters describe <cluster-id> \
+  -q "{name: name, tier: tier, version_channel: version_channel, release_channel: release_channel, features: features}" \
+  -o yaml | cloudfleet clusters update <cluster-id> -f - --tier pro
+```
+
+Read responses also carry read-only fields (`id`, `status`, `endpoint`, `networking`, timestamps) that updates reject, which is why the projection matters.
+
 ## Fleet Creation
 
 A fleet connects one or more cloud provider accounts to enable auto-provisioned nodes.
@@ -50,10 +73,11 @@ A fleet connects one or more cloud provider accounts to enable auto-provisioned 
 ### Hetzner
 
 ```bash
-cloudfleet clusters fleets create <cluster-id> <<EOF
+cloudfleet clusters fleets create <cluster-id> -f - <<EOF
 {
   "id": "hetzner-fleet",
   "hetzner": {
+    "enabled": true,
     "apiKey": "<hetzner-cloud-api-token>"
   },
   "limits": { "cpu": 24 }
@@ -66,10 +90,11 @@ Generate API token with "Read & Write" permissions in Hetzner Cloud Console → 
 ### AWS
 
 ```bash
-cloudfleet clusters fleets create <cluster-id> <<EOF
+cloudfleet clusters fleets create <cluster-id> -f - <<EOF
 {
   "id": "aws-fleet",
   "aws": {
+    "enabled": true,
     "controllerRoleArn": "arn:aws:iam::123456789012:role/cloudfleet-controller-role"
   },
   "limits": { "cpu": 48 }
@@ -86,10 +111,11 @@ AWS uses IAM Workload Identity Federation (credential-less access). You need to:
 ### GCP
 
 ```bash
-cloudfleet clusters fleets create <cluster-id> <<EOF
+cloudfleet clusters fleets create <cluster-id> -f - <<EOF
 {
   "id": "gcp-fleet",
   "gcp": {
+    "enabled": true,
     "project": "my-gcp-project-id"
   },
   "limits": { "cpu": 48 }
@@ -107,19 +133,35 @@ Requires:
 A single fleet can include multiple providers:
 
 ```bash
-cloudfleet clusters fleets create <cluster-id> <<EOF
+cloudfleet clusters fleets create <cluster-id> -f - <<EOF
 {
   "id": "multi-cloud",
-  "hetzner": { "apiKey": "<token>" },
-  "aws": { "controllerRoleArn": "arn:aws:iam::123456789012:role/cf-role" },
+  "hetzner": { "enabled": true, "apiKey": "<token>" },
+  "aws": { "enabled": true, "controllerRoleArn": "arn:aws:iam::123456789012:role/cf-role" },
   "limits": { "cpu": 100 }
 }
 EOF
 ```
 
-### Fleet Limits
+### Fleet Fields
 
-The `limits.cpu` field sets the maximum total vCPU count across all nodes in the fleet. This prevents runaway costs.
+| Field            | Description                                                                                                    |
+| ---------------- | -------------------------------------------------------------------------------------------------------------- |
+| `id`             | Fleet ID, set at creation                                                                                      |
+| `<provider>`     | `hetzner`, `aws`, or `gcp`. Each needs `"enabled": true` plus its credentials. At least one must be enabled.   |
+| `limits.cpu`     | Maximum total vCPU across all nodes in the fleet. Prevents runaway costs.                                      |
+| `scalingProfile` | `conservative` or `aggressive`. Controls how eagerly the auto-provisioner consolidates under-utilized nodes.   |
+| `constraints`    | Map of label to allowed values, pinning what the auto-provisioner may pick. Each listed label needs >=1 value. |
+
+Constraints keep placement rules out of every pod spec:
+
+```json
+"constraints": {
+  "kubernetes.io/arch": ["amd64", "arm64"],
+  "karpenter.sh/capacity-type": ["on-demand", "spot"],
+  "cfke.io/instance-family": ["t3", "m5"]
+}
+```
 
 ### Other Fleet Commands
 

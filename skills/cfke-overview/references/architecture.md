@@ -53,10 +53,6 @@ Any Linux server can join a CFKE cluster with a single command, enabling hybrid 
 
 Enables `kubectl exec`, `kubectl logs`, and webhook traffic from the control plane to reach pods on data plane nodes through the VPN tunnel.
 
-### Cost Optimization
-
-Inactive clusters (non-pro tier, zero nodes, 7 days idle) are automatically suspended to save costs. They wake on first API request.
-
 ## Auto-Provisioning Fleets
 
 Fleets are configured via the Cloudfleet API or CLI (`cloudfleet clusters fleets`). Users define which cloud providers to use, resource limits (max vCPUs), and regions. CFKE handles the underlying node provisioning automatically — users do not manage NodePool or NodeClass resources directly.
