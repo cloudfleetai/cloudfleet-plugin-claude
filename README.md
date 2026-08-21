@@ -5,7 +5,7 @@
 ## Features
 
 - **Preconfigured MCP server** — query clusters, list resources, and get cluster info without local setup
-- **kubectl safety** — PreToolUse hook validates kubectl targets a CFKE cluster, isolated kubeconfig management
+- **kubectl guardrail** — a PreToolUse hook resolves the server each kubectl command would reach and blocks it if that server is not a CFKE cluster, plus isolated kubeconfig management. A backstop, not a security boundary: aliases and wrapper scripts bypass it.
 - **Background knowledge** — CFKE architecture, CFCR usage, best practices (resource requests, load balancers, node placement) auto-triggered when relevant
 - **Guided workflows** — cluster setup, fleet configuration, self-managed nodes, debugging
 
@@ -57,6 +57,7 @@ Once installed, try these prompts:
 - [Cloudfleet CLI](https://cloudfleet.ai/docs/introduction/getting-started/) v1.2+ (write commands changed their input model in 1.0)
 - A Cloudfleet account with at least one configured authentication profile
 - (Optional) `kubectl` for full cluster access
+- `jq`, required by the kubectl guardrail hook. Without it the hook allows every command rather than blocking the session.
 
 ## Documentation
 

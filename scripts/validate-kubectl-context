@@ -1,55 +1,83 @@
 #!/usr/bin/env bash
-# PreToolUse hook: validates that kubectl commands target a CFKE cluster.
-# Reads tool input JSON from stdin. Exits 2 to block, 0 to allow.
+# PreToolUse hook: keeps kubectl pointed at a CFKE cluster.
+#
+# Reads the tool input JSON on stdin. Exit 2 blocks the call, exit 0 allows it.
+#
+# Only a positively resolved non-CFKE server blocks. A target the hook cannot
+# resolve is allowed: unresolvable is not the same as wrong, and blocking on it
+# is how a guardrail turns into an obstacle. kubectl reports its own errors.
 
-set -euo pipefail
+set -uo pipefail
 
-INPUT=$(cat)
+# API server domains CFKE issues. `cfke.io` is current; `cfke.cloudfleet.dev` is
+# the privately signed endpoint deprecated on 2026-05-14, still present in
+# kubeconfigs written before CLI 0.10.0.
+CFKE_HOST_RE='\.(cfke\.io|cfke\.cloudfleet\.dev)$'
 
-# Extract the command from tool input
-COMMAND=$(echo "$INPUT" | jq -r '.tool_input.command // empty')
+# A missing dependency must not wedge every Bash call in the session.
+command -v jq >/dev/null 2>&1 || exit 0
+command -v kubectl >/dev/null 2>&1 || exit 0
 
-# Only check commands that invoke kubectl
-if ! echo "$COMMAND" | grep -qE '\bkubectl\b'; then
-    exit 0
+COMMAND=$(jq -r '.tool_input.command // empty' 2>/dev/null)
+[ -n "$COMMAND" ] || exit 0
+
+# Detection: blank out quoted spans first, so a command that merely mentions
+# kubectl inside a string or commit message is not mistaken for an invocation.
+# Then split on shell separators and require kubectl to be the command word.
+invokes_kubectl() {
+    printf '%s' "$1" |
+        sed -e "s/'[^']*'/ /g" -e 's/"[^"]*"/ /g' |
+        tr '|;&' '\n\n\n' |
+        sed -e 's/^[[:space:]]*//' |
+        sed -E -e ':a' -e 's/^[A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+//' -e 'ta' |
+        sed -E 's/^(sudo|command|env|time)[[:space:]]+//' |
+        grep -qE '^([^[:space:]]*/)?kubectl([[:space:]]|$)'
+}
+
+invokes_kubectl "$COMMAND" || exit 0
+
+# Extraction runs against the original command, quotes intact, so a flag value
+# containing spaces survives.
+flag_value() {
+    printf '%s' "$COMMAND" |
+        grep -oE -- "--$1[=[:space:]]+('[^']*'|\"[^\"]*\"|[^[:space:]]+)" |
+        head -1 |
+        sed -E -e "s/^--$1[=[:space:]]+//" -e "s/^['\"]//" -e "s/['\"]$//"
+}
+
+KUBECONFIG_FLAG=$(flag_value kubeconfig)
+CONTEXT_FLAG=$(flag_value context)
+KUBECONFIG_ENV=$(printf '%s' "$COMMAND" | grep -oE 'KUBECONFIG=[^[:space:]]+' | head -1 | cut -d= -f2-)
+
+# The command string carries a literal ~; the hook has to expand it itself.
+KUBECONFIG_FLAG="${KUBECONFIG_FLAG/#\~/$HOME}"
+KUBECONFIG_ENV="${KUBECONFIG_ENV/#\~/$HOME}"
+
+# Ask kubectl which server the command would actually reach, rather than
+# guessing from the flags. --kubeconfig and --context are honored by
+# `config view`, so forwarding them resolves the real target.
+ARGS=(config view --minify -o 'jsonpath={.clusters[0].cluster.server}')
+[ -n "$KUBECONFIG_FLAG" ] && ARGS+=(--kubeconfig "$KUBECONFIG_FLAG")
+[ -n "$CONTEXT_FLAG" ] && ARGS+=(--context "$CONTEXT_FLAG")
+
+if [ -n "$KUBECONFIG_ENV" ]; then
+    SERVER=$(KUBECONFIG="$KUBECONFIG_ENV" kubectl "${ARGS[@]}" 2>/dev/null)
+else
+    SERVER=$(kubectl "${ARGS[@]}" 2>/dev/null)
 fi
 
-# If the command already uses --kubeconfig pointing to a cloudfleet temp file, allow it
-if echo "$COMMAND" | grep -qE '\-\-kubeconfig\s+/tmp/cloudfleet-'; then
-    exit 0
-fi
+HOST=$(printf '%s' "$SERVER" | sed -E -e 's|^[a-zA-Z][a-zA-Z0-9+.-]*://||' -e 's|[:/].*$||')
 
-# If the command uses --kubeconfig with any path, allow it (user is explicit)
-if echo "$COMMAND" | grep -qE '\-\-kubeconfig\b'; then
-    exit 0
-fi
+# Unresolved target: let the command run and let kubectl explain itself.
+[ -n "$HOST" ] || exit 0
 
-# If the command explicitly specifies --context, the user knows what they're targeting — allow it
-if echo "$COMMAND" | grep -qE '\-\-context\b'; then
-    exit 0
-fi
+printf '%s' "$HOST" | grep -qE "$CFKE_HOST_RE" && exit 0
 
-# If KUBECONFIG env var is set and points to a cloudfleet temp file, allow it
-if echo "$COMMAND" | grep -qE 'KUBECONFIG=/tmp/cloudfleet-'; then
-    exit 0
-fi
+cat >&2 <<EOF
+Blocked: this kubectl command resolves to '$SERVER', which is not a CFKE cluster.
 
-# Bare kubectl without --kubeconfig — check the current context
-CURRENT_SERVER=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}' 2>/dev/null || true)
-
-if [ -z "$CURRENT_SERVER" ]; then
-    echo "No active kubectl context found. Use 'cloudfleet clusters kubeconfig <cluster-id> --kubeconfig /tmp/cloudfleet-<id>.kubeconfig' to configure access." >&2
-    exit 2
-fi
-
-if echo "$CURRENT_SERVER" | grep -qE '\.cfke\.cloudfleet\.dev'; then
-    # Current context points to a CFKE cluster — allow but warn
-  cat <<EOF
-{"additionalContext": "WARNING: Using bare kubectl with the user's active context. For safety, prefer using --kubeconfig /tmp/cloudfleet-<cluster-id>.kubeconfig to target a specific cluster."}
+Target a CFKE cluster explicitly:
+  KUBECONFIG=\$(cfke-kubeconfig get <cluster-id>)
+  kubectl --kubeconfig \$KUBECONFIG ...
 EOF
-    exit 0
-fi
-
-# Current context is NOT a CFKE cluster — block
-echo "Current kubectl context points to '$CURRENT_SERVER' which is not a CFKE cluster. Use 'cloudfleet clusters kubeconfig <cluster-id> --kubeconfig /tmp/cloudfleet-<id>.kubeconfig' and pass --kubeconfig to kubectl." >&2
 exit 2
