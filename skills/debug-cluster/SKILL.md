@@ -90,22 +90,23 @@ Based on findings, drill into specific areas:
 - **Node issues**: Check node conditions, Cilium status
 - **Networking**: Check Cilium pods, CoreDNS, Services/Endpoints
 - **Scheduling**: Check resource requests vs available capacity, taints/tolerations
+- **Storage**: A PVC stuck `Pending` usually means no CSI driver. CFKE installs none for any provider, on purpose: the driver for whichever cloud the nodes run on is yours to install and own. Check for a StorageClass and a running CSI controller before looking further.
 
 ### 6. Consult the troubleshooting docs
 
 Once the symptom is identified, open the matching page under `https://cloudfleet.ai/docs/troubleshooting/<slug>/` and follow it. **Fetch the page and read it. Never answer from the slug alone** — these pages change often, and a plausible-sounding answer reconstructed from the URL will be wrong.
 
-| Symptom                                                               | Slug                            |
-| --------------------------------------------------------------------- | ------------------------------- |
-| Pods stay `Pending`, no nodes appear                                  | `pods-stuck-in-pending`         |
-| `kubectl` cannot connect, cluster reported unavailable                | `cannot-reach-cluster`          |
-| API throttling, leader election flapping, GitOps reconcile storms     | `control-plane-pressure`        |
-| `exec format error`, arm64/amd64 image mismatch                       | `handle-single-platform-images` |
-| Request too large, data store size limits                             | `kubernetes-api-server-quotas`  |
-| LB IP changed, PROXY protocol errors, in-cluster LB access            | `load-balancer-issues`          |
-| Pod-to-pod failures, NetworkPolicy blocking the API server, Tailscale | `network-connectivity-issues`   |
-| PVs stuck attaching or mounting, disk pressure evictions              | `persistent-volume-issues`      |
-| Self-managed node will not join, frozen, or has host DNS problems     | `self-managed-node-issues`      |
+| Symptom                                                                       | Slug                            |
+| ----------------------------------------------------------------------------- | ------------------------------- |
+| Pods stay `Pending`, no nodes appear                                          | `pods-stuck-in-pending`         |
+| `kubectl` cannot connect, cluster reported unavailable                        | `cannot-reach-cluster`          |
+| API throttling, leader election flapping, GitOps reconcile storms             | `control-plane-pressure`        |
+| `exec format error`, arm64/amd64 image mismatch                               | `handle-single-platform-images` |
+| Request too large, data store size limits                                     | `kubernetes-api-server-quotas`  |
+| LB IP changed, PROXY protocol errors, in-cluster LB access                    | `load-balancer-issues`          |
+| Pod-to-pod failures, NetworkPolicy blocking the API server, Tailscale         | `network-connectivity-issues`   |
+| PVC stuck `Pending`, PVs stuck attaching or mounting, disk pressure evictions | `persistent-volume-issues`      |
+| Self-managed node will not join, frozen, or has host DNS problems             | `self-managed-node-issues`      |
 
 If a fetch returns 404 the page was renamed. Fetch the index at https://cloudfleet.ai/docs/troubleshooting/ and pick from there rather than guessing a new slug.
 
