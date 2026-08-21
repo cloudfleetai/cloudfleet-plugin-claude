@@ -1,6 +1,6 @@
 {
     "name": "cloudfleet",
-    "version": "0.2.4",
+    "version": "0.3.0",
     "description": "Claude Code plugin by Cloudfleet — operate Cloudfleet Kubernetes Engine (CFKE) and Cloudfleet Container Registry (CFCR) with guided workflows, debugging aids, and preconfigured MCP access.",
     "author": {
         "name": "Cloudfleet",
