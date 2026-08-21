@@ -21,12 +21,14 @@ Guide users through the full process of getting a Cloudfleet cluster up and runn
 First, fetch available options from the user's organization:
 
 ```bash
-cloudfleet organization describe
+cloudfleet organization describe -o json -q 'quota.{regions: regions, versions: versions, tiers: cluster_tiers}'
 ```
 
-This returns the available `regions`, `versions`, and `cluster_tiers` under the `quota` field. Use these values — do NOT hardcode regions or versions.
+Use these values — do NOT hardcode regions or versions. The projection matters: these lists live under `quota`, and the table renderer collapses nested objects to `{...}`, so the bare command returns nothing usable when a profile pins table output.
 
-A payment method is required at signup, so every tier is billable from the start. If a tier the user asked for is not listed in `quota.cluster_tiers`, tell them rather than silently picking another one.
+**If the lists come back empty or missing, the organization has no billing address or payment method.** Quota is only set once billing is complete. This is not a permissions or CLI problem and no cluster can be created until it is fixed in the console at https://console.cloudfleet.ai. Say so instead of retrying or falling back to hardcoded values.
+
+A payment method is required at signup, so every tier is billable from the start. If a tier the user asked for is missing from the list while others are present, tell them rather than silently picking another one.
 
 Then create the cluster:
 

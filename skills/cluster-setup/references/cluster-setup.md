@@ -7,10 +7,12 @@
 Always fetch available regions, versions, and tiers from the user's organization before creating a cluster:
 
 ```bash
-cloudfleet organization describe
+cloudfleet organization describe -o json -q 'quota.{regions: regions, versions: versions, tiers: cluster_tiers}'
 ```
 
-The `quota` field contains `regions`, `versions` (with `id` and `label`), and `cluster_tiers`. Use these values — never hardcode them.
+`versions` entries carry `id` and `label`; pass the `id`. Use these values — never hardcode them. The rest of `quota` is cluster and fleet counts, which cluster creation does not need.
+
+Empty or missing lists mean the organization has no billing address or payment method: quota is only set once billing is complete. Nothing can be created until that is resolved in the console.
 
 ### CLI Command
 

@@ -90,6 +90,7 @@ Based on findings, drill into specific areas:
 - **Node issues**: Check node conditions, Cilium status
 - **Networking**: Check Cilium pods, CoreDNS, Services/Endpoints
 - **Scheduling**: Check resource requests vs available capacity, taints/tolerations
+- **`No agent available`**: this error means two different things. If the node is `NotReady` and unreachable, it is down (see `self-managed-node-issues`). If nodes are healthy, it is a transient blip in the control plane tunnel, common right after an operator pod restarts. Retry once before investigating.
 - **Storage**: A PVC stuck `Pending` usually means no CSI driver. CFKE installs none for any provider, on purpose: the driver for whichever cloud the nodes run on is yours to install and own. Check for a StorageClass and a running CSI controller before looking further.
 
 ### 6. Consult the troubleshooting docs
