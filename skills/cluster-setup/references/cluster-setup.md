@@ -147,13 +147,13 @@ EOF
 
 ### Fleet Fields
 
-| Field            | Description                                                                                                    |
-| ---------------- | -------------------------------------------------------------------------------------------------------------- |
-| `id`             | Fleet ID, set at creation                                                                                      |
-| `<provider>`     | `hetzner`, `aws`, or `gcp`. Each needs `"enabled": true` plus its credentials. At least one must be enabled.   |
-| `limits.cpu`     | Maximum total vCPU across all nodes in the fleet. Prevents runaway costs.                                      |
-| `scalingProfile` | `conservative` or `aggressive`. Controls how eagerly the auto-provisioner consolidates under-utilized nodes.   |
-| `constraints`    | Map of label to allowed values, pinning what the auto-provisioner may pick. Each listed label needs >=1 value. |
+| Field            | Description                                                                                                                                                                                                                        |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`             | Fleet ID, set at creation                                                                                                                                                                                                          |
+| `<provider>`     | `hetzner`, `aws`, or `gcp`. Each needs `"enabled": true` plus its credentials. At least one must be enabled.                                                                                                                       |
+| `limits.cpu`     | Maximum total vCPU across all nodes in the fleet. Prevents runaway costs.                                                                                                                                                          |
+| `scalingProfile` | `conservative` or `aggressive`. Controls how eagerly the auto-provisioner consolidates under-utilized nodes.                                                                                                                       |
+| `constraints`    | Map of label to allowed values, pinning what the auto-provisioner may pick. Each listed label needs >=1 value. Omitting the block applies server defaults, including `kubernetes.io/arch: ["amd64"]`, so arm64 must be opted into. |
 
 Constraints keep placement rules out of every pod spec:
 

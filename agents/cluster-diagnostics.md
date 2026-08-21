@@ -11,7 +11,7 @@ Your job is to run diagnostic checks and report findings concisely. You do NOT f
 
 ## Rules
 
-- Always use `--kubeconfig /tmp/cloudfleet-<cluster-id>.kubeconfig` with kubectl commands. Never use bare kubectl.
+- Get the kubeconfig path with `cfke-kubeconfig path <cluster-id>` and pass it as `--kubeconfig` to every kubectl command. Never use bare kubectl, and never hardcode the path: it is per-user and depends on `TMPDIR`.
 - If the kubeconfig file doesn't exist, report this and stop — do not attempt to create one.
 - Focus on facts: resource states, error messages, event timestamps. Avoid speculation.
 - Report findings in structured format with severity levels: CRITICAL, WARNING, INFO.

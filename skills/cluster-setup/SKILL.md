@@ -73,6 +73,18 @@ EOF
 
 Every provider block needs `"enabled": true` alongside its credentials.
 
+**Omitting `constraints` does not mean "no restriction".** The server applies defaults, and the arch default is `["amd64"]`, so a fleet created without constraints will never provision arm64. On Hetzner that silently excludes the CAX line, which is often the cheapest capacity available. Set the constraint explicitly when arm64 is wanted:
+
+```json
+"constraints": { "kubernetes.io/arch": ["amd64", "arm64"] }
+```
+
+**Fleet creation is asynchronous.** The command returns a fleet ID immediately, but the fleet comes back `ready: false` with `status_message: "object is awaiting reconciliation"`, and the `<fleet-id>-secrets` secret it creates in `kube-system` does not exist until reconciliation finishes (roughly a minute). Anything consuming that secret, a CSI driver in particular, fails until then. Wait for it:
+
+```bash
+until [ "$(cloudfleet clusters fleets describe <cluster-id> <fleet-id> -o json -q ready)" = "true" ]; do sleep 5; done
+```
+
 Auto-provisioning providers: Hetzner (API token), AWS (IAM role ARN), GCP (project ID). These are the only three in the public fleet schema; Upcloud, Exoscale, Scaleway, and OVH are in private preview and need Cloudfleet support to enable. For anything else, join nodes as self-managed. A single fleet can span multiple providers. See [references/cluster-setup.md](references/cluster-setup.md) for all provider examples.
 
 **Updates replace the whole resource.** `clusters update` and `fleets update` are full PUTs: any field left out resets to its default, and a flags-only update is rejected client-side. Read the current state, edit it, pipe it back. See [references/cluster-setup.md](references/cluster-setup.md).
