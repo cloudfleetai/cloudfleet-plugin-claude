@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # PreToolUse hook: validates that kubectl commands target a CFKE cluster.
 # Reads tool input JSON from stdin. Exits 2 to block, 0 to allow.
 
