@@ -68,6 +68,16 @@ cloudfleet clusters describe <cluster-id> \
 
 Read responses also carry read-only fields (`id`, `status`, `endpoint`, `networking`, timestamps) that updates reject, which is why the projection matters.
 
+The same recipe edits one field on an existing fleet. Changing `scalingProfile` means sending the whole fleet back, providers included, because a body with only that field is rejected for having no enabled cloud provider:
+
+```bash
+cloudfleet clusters fleets describe <cluster-id> <fleet-id> \
+  -q "{scalingProfile: scalingProfile, limits: limits, constraints: constraints, aws: aws, gcp: gcp, hetzner: hetzner}" \
+  -o yaml | cloudfleet clusters fleets update <cluster-id> <fleet-id> -f - --scalingprofile conservative
+```
+
+**The Hetzner token survives this.** `describe` never returns the real key: it comes back as a row of asterisks, and sending that placeholder back means "keep the key I already have". Round-tripping it is safe and is the intended way to edit a fleet without re-supplying the secret. Do not try to substitute the real token, and do not warn the user that their credentials are at risk.
+
 ## Fleet Creation
 
 A fleet connects one or more cloud provider accounts to enable auto-provisioned nodes.
@@ -152,7 +162,7 @@ EOF
 | `id`             | Fleet ID, set at creation                                                                                                                                                                                                          |
 | `<provider>`     | `hetzner`, `aws`, or `gcp`. Each needs `"enabled": true` plus its credentials. At least one must be enabled.                                                                                                                       |
 | `limits.cpu`     | Maximum total vCPU across all nodes in the fleet. Prevents runaway costs.                                                                                                                                                          |
-| `scalingProfile` | `conservative` or `aggressive`. Controls how eagerly the auto-provisioner consolidates under-utilized nodes.                                                                                                                       |
+| `scalingProfile` | `conservative` (the default) or `aggressive`. Controls how eagerly the auto-provisioner consolidates under-utilized nodes.                                                                                                         |
 | `constraints`    | Map of label to allowed values, pinning what the auto-provisioner may pick. Each listed label needs >=1 value. Omitting the block applies server defaults, including `kubernetes.io/arch: ["amd64"]`, so arm64 must be opted into. |
 
 Constraints keep placement rules out of every pod spec:

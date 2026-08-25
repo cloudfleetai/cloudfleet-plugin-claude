@@ -18,6 +18,8 @@ which cloudfleet && cloudfleet --version || echo "NOT_INSTALLED"
 
 This plugin requires CLI **1.2 or newer**. Write commands changed their input model in 1.0, so older versions reject the syntax the other skills use. If the reported version is older, tell the user to upgrade before continuing:
 
+An older CLI also advertises an older feature set. If a field or flag the docs describe is missing from `--help`, treat that as an out-of-date binary, not a missing feature, and upgrade before telling the user something is unsupported.
+
 ```bash
 brew upgrade cloudfleet-cli                                    # macOS
 sudo apt-get update && sudo apt-get install --only-upgrade cloudfleet  # Debian/Ubuntu
